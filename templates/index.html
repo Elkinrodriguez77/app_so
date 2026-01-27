@@ -1,88 +1,66 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carga de Ventas - SBD</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f8f9fa; }
-        .card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-primary { background-color: #fdb927; border: none; color: #000; font-weight: bold; }
-        .btn-primary:hover { background-color: #e5a720; color: #000; }
-    </style>
-</head>
-<body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6 text-center">
-                <div class="mb-4">
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm float-end">Ir a Consultas</a>
-                    <h2 class="mb-0">Carga de Reportes de Ventas</h2>
+{% extends "layout.html" %}
+
+{% block title %}Cargar Ventas - SBD{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <h2 class="mb-4">Carga de Reportes de Ventas</h2>
+        <div class="card p-4 shadow-sm border-0">
+            <form action="{{ url_for('process_upload') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="mb-3">
+                    <label for="excel_file" class="form-label">Seleccione el archivo (Excel o CSV)</label>
+                    <input class="form-control" type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls, .csv" required>
                 </div>
-                <div class="card p-4">
-                    {% with messages = get_flashed_messages() %}
-                      {% if messages %}
-                        {% for message in messages %}
-                          <div class="alert alert-danger">{{ message }}</div>
-                        {% endfor %}
-                      {% endif %}
-                    {% endwith %}
-                    
-                    <form action="{{ url_for('process_upload') }}" method="post" enctype="multipart/form-data" id="uploadForm">
-                        <div class="mb-3">
-                            <label for="excel_file" class="form-label">Seleccione el archivo (Excel o CSV)</label>
-                            <input class="form-control" type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls, .csv" required>
-                        </div>
-                        <div id="uploadProgressContainer" class="mb-3" style="display:none;">
-                            <label class="small text-muted">Subiendo archivo al servidor...</label>
-                            <div class="progress" style="height: 20px;">
-                                <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; color: black; font-weight: bold;">0%</div>
-                            </div>
-                        </div>
-                        <button type="submit" id="btnUpload" class="btn btn-primary w-100">Siguiente: Seleccionar Hoja / Configurar</button>
-                    </form>
+                <div id="uploadProgressContainer" class="mb-3" style="display:none;">
+                    <label class="small text-muted">Subiendo archivo al servidor...</label>
+                    <div class="progress" style="height: 20px;">
+                        <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; color: black; font-weight: bold;">0%</div>
+                    </div>
                 </div>
-                <p class="text-muted mt-3"><small>Para archivos muy grandes, se recomienda usar formato <strong>CSV</strong>.</small></p>
-            </div>
+                <button type="submit" id="btnUpload" class="btn btn-primary w-100">Siguiente: Seleccionar Hoja / Configurar</button>
+            </form>
         </div>
+        <p class="text-muted mt-3"><small>Para archivos muy grandes, se recomienda usar formato <strong>CSV</strong>.</small></p>
     </div>
+</div>
+{% endblock %}
 
-    <script>
-        document.getElementById('uploadForm').onsubmit = function(e) {
-            const btn = document.getElementById('btnUpload');
-            const progressCont = document.getElementById('uploadProgressContainer');
-            const progressBar = document.getElementById('uploadProgressBar');
-            
-            btn.disabled = true;
-            progressCont.style.display = 'block';
+{% block scripts %}
+<script>
+    document.getElementById('uploadForm').onsubmit = function(e) {
+        const btn = document.getElementById('btnUpload');
+        const progressCont = document.getElementById('uploadProgressContainer');
+        const progressBar = document.getElementById('uploadProgressBar');
+        
+        btn.disabled = true;
+        progressCont.style.display = 'block';
 
-            const formData = new FormData(this);
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '{{ url_for("process_upload") }}', true);
+        const formData = new FormData(this);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '{{ url_for("process_upload") }}', true);
 
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    progressBar.style.width = percent + '%';
-                    progressBar.innerHTML = percent + '%';
-                }
-            };
-
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    document.open();
-                    document.write(xhr.responseText);
-                    document.close();
-                } else {
-                    alert('Error en la carga');
-                    btn.disabled = false;
-                    progressCont.style.display = 'none';
-                }
-            };
-            xhr.send(formData);
-            return false;
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.innerHTML = percent + '%';
+            }
         };
-    </script>
-</body>
-</html>
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                document.open();
+                document.write(xhr.responseText);
+                document.close();
+            } else {
+                alert('Error en la carga');
+                btn.disabled = false;
+                progressCont.style.display = 'none';
+            }
+        };
+        xhr.send(formData);
+        return false;
+    };
+</script>
+{% endblock %}

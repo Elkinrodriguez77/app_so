@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Mapeo de Columnas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-</head>
-<body class="bg-light">
-    <div class="container mt-5 mb-5">
-        <div class="card p-4 shadow">
+{% extends "layout.html" %}
+
+{% block title %}Mapeo de Columnas - SBD{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-4 shadow-sm border-0">
             <h3 class="mb-4">Relacionar Columnas</h3>
             <p class="text-muted">Asocie las columnas de su archivo con los campos requeridos.</p>
             
@@ -54,59 +51,61 @@
             </form>
         </div>
     </div>
+</div>
 
-    <!-- Modal de Carga -->
-    <div class="modal fade" id="importModal" data-bs-backdrop="static" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body text-center p-5">
-                    <div id="importLoading">
-                        <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;"></div>
-                        <h5>Procesando y Guardando Datos...</h5>
-                        <p class="text-muted small">Esto puede tardar unos minutos.<br><strong>No cierre esta ventana.</strong></p>
-                    </div>
-                    <div id="importResult" style="display:none;"></div>
+<!-- Modal de Carga -->
+<div class="modal fade" id="importModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-5">
+                <div id="importLoading">
+                    <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;"></div>
+                    <h5>Procesando y Guardando Datos...</h5>
+                    <p class="text-muted small">Esto puede tardar unos minutos.<br><strong>No cierre esta ventana.</strong></p>
                 </div>
+                <div id="importResult" style="display:none;"></div>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el) });
+{% block scripts %}
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el) });
 
-        document.getElementById('importForm').onsubmit = function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnImport');
-            const modal = new bootstrap.Modal(document.getElementById('importModal'));
-            const loading = document.getElementById('importLoading');
-            const result = document.getElementById('importResult');
-            const formData = new FormData(this);
+    document.getElementById('importForm').onsubmit = function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnImport');
+        const modal = new bootstrap.Modal(document.getElementById('importModal'));
+        const loading = document.getElementById('importLoading');
+        const result = document.getElementById('importResult');
+        const formData = new FormData(this);
+        formData.append('is_ajax', '1');
 
-            btn.disabled = true;
-            modal.show();
+        btn.disabled = true;
+        modal.show();
 
-            fetch('{{ url_for("import_data") }}', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                loading.style.display = 'none';
-                result.style.display = 'block';
-                if (data.status === 'success') {
-                    result.innerHTML = `<h2 class="text-success">¡Éxito!</h2><p>Se importaron <b>${data.count}</b> registros.</p>
-                                      <div class="mt-4"><a href="{{ url_for('index') }}" class="btn btn-primary">Cargar más</a> 
-                                      <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Ver Dashboard</a></div>`;
-                } else {
-                    throw new Error(data.message);
-                }
-            })
-            .catch(err => {
-                loading.style.display = 'none';
-                result.style.display = 'block';
-                result.innerHTML = `<div class="alert alert-danger"><h5>Error</h5><p>${err.message}</p>
-                                   <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Reintentar</button></div>`;
-            });
-        };
-    </script>
-</body>
-</html>
+        fetch('{{ url_for("import_data") }}', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            if (data.status === 'success') {
+                result.innerHTML = `<h2 class="text-success">¡Éxito!</h2><p>Se importaron <b>${data.count}</b> registros.</p>
+                                  <div class="mt-4"><a href="{{ url_for('index') }}" class="btn btn-primary">Cargar más</a> 
+                                  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Ver Dashboard</a></div>`;
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            result.innerHTML = `<div class="alert alert-danger"><h5>Error</h5><p>${err.message}</p>
+                               <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Reintentar</button></div>`;
+        });
+    };
+</script>
+{% endblock %}
