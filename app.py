@@ -5,11 +5,13 @@ from sqlalchemy import create_engine, text
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from functools import wraps
 from dotenv import load_dotenv
 
 load_dotenv()
 
+BOGOTA_TZ = ZoneInfo("America/Bogota")
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "sbd_secret_key_9988_prod")
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -79,7 +81,7 @@ def login():
         if user and check_password_hash(user['password_hash'], p):
             with engine.begin() as conn:
                 conn.execute(text("UPDATE usuarios SET ultimo_acceso = :now WHERE id = :id"), 
-                             {"now": datetime.now(), "id": user['id']})
+                             {"now": datetime.now(BOGOTA_TZ), "id": user['id']})
             session['user_id'], session['username'] = user['id'], user['username']
             return redirect(url_for('index'))
         flash('Usuario o contraseña incorrectos')
@@ -116,7 +118,7 @@ def index():
 def process_upload():
     if 'excel_file' not in request.files: return redirect(url_for('index'))
     file = request.files['excel_file']
-    filename = secure_filename(f"{int(datetime.now().timestamp())}_{file.filename}")
+    filename = secure_filename(f"{int(datetime.now(BOGOTA_TZ).timestamp())}_{file.filename}")
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
     ext = filename.rsplit('.', 1)[1].lower()
@@ -191,6 +193,22 @@ def final_import():
     sku_corrections = request.form.to_dict(flat=True)
     
     try:
+        # VALIDACIÓN DE SKUs DE REEMPLAZO (Asegurar que los nuevos códigos sí existen en SAP)
+        if sku_corrections:
+            nuevos_skus = [s.strip() for s in sku_corrections.values() if s.strip()]
+            if nuevos_skus:
+                with engine.connect() as conn:
+                    # Buscamos cuáles de esos SKUs existen en la tabla maestra
+                    res = conn.execute(text('SELECT DISTINCT "Product" FROM sap_byd_ventas WHERE "Product" IN :skus'), {"skus": tuple(nuevos_skus)}).fetchall()
+                    skus_validos = set(str(r[0]) for r in res)
+                
+                invalidos = [s for s in nuevos_skus if s not in skus_validos]
+                if invalidos:
+                    return jsonify({
+                        'status': 'error', 
+                        'message': f"ERROR DE VALIDACIÓN: Los siguientes códigos ingresados no existen en SAP: {', '.join(invalidos)}. Por favor verifique y use códigos válidos."
+                    }), 400
+
         df = read_csv_smart(data['filepath']) if data['sheet'] == 'csv' else pd.read_excel(data['filepath'], sheet_name=data['sheet'])
         final_m = {v: k for k, v in data['mapping'].items() if v}
         df = df[list(final_m.keys())].rename(columns=final_m)
@@ -200,10 +218,13 @@ def final_import():
 
         df['sku_sbd'] = df['sku_sbd'].astype(str).replace(sku_corrections)
         df['usuario_carga'] = session['username']
+        df['fecha_carga'] = datetime.now(BOGOTA_TZ)
 
         for col in ['cantidad_vendida', 'total_venta_costo', 'total_venta']:
             if col in df.columns: df[col] = df[col].apply(clean_money)
-        if 'fecha' in df.columns: df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce').dt.date
+        if 'fecha' in df.columns: 
+            # Para CSVs usamos dayfirst=True ya que en Colombia es DD/MM/YYYY
+            df['fecha'] = pd.to_datetime(df['fecha'], dayfirst=True, errors='coerce').dt.date
         if 'codigo_cliente' in df.columns: df['codigo_cliente'] = pd.to_numeric(df['codigo_cliente'], errors='coerce').fillna(0).astype(int)
 
         df.to_sql('ventas', engine, if_exists='append', index=False)
@@ -216,8 +237,8 @@ def final_import():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    fi = request.args.get('fecha_inicio', datetime.now().strftime('%Y-%m-01'))
-    ff = request.args.get('fecha_fin', datetime.now().strftime('%Y-%m-%d'))
+    fi = request.args.get('fecha_inicio', datetime.now(BOGOTA_TZ).strftime('%Y-%m-01'))
+    ff = request.args.get('fecha_fin', datetime.now(BOGOTA_TZ).strftime('%Y-%m-%d'))
     ap = request.args.get('agrupar_por', 'canal_venta')
     fc = request.args.get('filtro_cliente', '')
     with engine.connect() as conn:

@@ -1,30 +1,40 @@
 {% extends "layout.html" %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 text-center">
-        <div class="card p-5 shadow-sm border-0 border-start border-success border-4">
-            <h2 class="text-success mb-4"><i class="bi bi-check-circle-fill"></i> ¡Todo Listo!</h2>
-            <p>Todos los datos han sido validados. Los canales están homologados y los SKUs existen en SAP.</p>
+<div class="row justify-content-center py-5">
+    <div class="col-xl-6 col-lg-8 text-center">
+        <div class="card p-5 shadow-lg border-0 bg-white border-bottom border-success border-5 fade-in">
+            <div class="mb-4">
+                <div class="d-inline-block p-4 rounded-circle bg-light mb-3">
+                    <i class="bi bi-check-all text-success display-3"></i>
+                </div>
+            </div>
+            <h2 class="fw-bold text-dark mb-3">¡VALIDACIÓN COMPLETA!</h2>
+            <p class="text-muted mb-5 px-4">Hemos verificado su archivo exitosamente. Los canales están homologados y todos los productos existen en la base maestra de SAP.</p>
             
             <form id="finalForm">
-                <button type="submit" id="btnFinalImport" class="btn btn-success btn-lg w-100 shadow">Iniciar Carga en Base de Datos</button>
+                <div class="d-grid gap-3">
+                    <button type="submit" id="btnFinalImport" class="btn btn-sbd py-3 fw-bold fs-5 shadow-sm">
+                        <i class="bi bi-cloud-check-fill me-2"></i> INICIAR CARGA DEFINITIVA
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-light py-2 fw-bold text-muted border">
+                        CANCELAR Y VOLVER AL INICIO
+                    </a>
+                </div>
             </form>
-            <div class="mt-3">
-                <a href="{{ url_for('index') }}" class="text-muted small">Cancelar y volver al inicio</a>
-            </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Carga Final -->
+<!-- Modal de Carga Final Estilizado -->
 <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content bg-white border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-body text-center p-5">
                 <div id="loadingStatus">
-                    <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;"></div>
-                    <h5>Procesando Carga Final...</h5>
-                    <p class="text-muted small">Guardando registros en la base de datos de producción.</p>
+                    <div class="spinner-border text-success mb-4" style="width: 3.5rem; height: 3.5rem; border-width: 0.25em;" role="status"></div>
+                    <h4 class="fw-bold text-dark">IMPORTANDO DATOS</h4>
+                    <p class="text-muted mb-0 small">Guardando registros validados en la base de datos central.</p>
                 </div>
                 <div id="finalResult" style="display:none;"></div>
             </div>
@@ -50,9 +60,19 @@
             loading.style.display = 'none';
             result.style.display = 'block';
             if (data.status === 'success') {
-                result.innerHTML = `<h2 class="text-success">¡Carga Completada!</h2><p>Se importaron <b>${data.count}</b> registros sin errores.</p>
-                                  <div class="mt-4"><a href="{{ url_for('index') }}" class="btn btn-primary">Nueva Carga</a> 
-                                  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Ver Dashboard</a></div>`;
+                result.innerHTML = `
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-patch-check-fill text-success" style="font-size: 4.5rem;"></i>
+                        </div>
+                        <h2 class="fw-bold text-dark mt-3">¡ÉXITO TOTAL!</h2>
+                        <p class="text-muted">Se han cargado <b>${data.count}</b> registros correctamente.</p>
+                        <hr class="my-4 opacity-10">
+                        <div class="d-grid gap-3">
+                            <a href="{{ url_for('index') }}" class="btn btn-sbd py-3">NUEVA OPERACIÓN</a>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-light py-2 fw-bold text-muted border">VER DASHBOARD</a>
+                        </div>
+                    </div>`;
             } else {
                 throw new Error(data.message);
             }
@@ -60,8 +80,12 @@
         .catch(err => {
             loading.style.display = 'none';
             result.style.display = 'block';
-            result.innerHTML = `<div class="alert alert-danger"><h5>Error en la Importación</h5><p>${err.message}</p>
-                               <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Reintentar</button></div>`;
+            result.innerHTML = `
+                <div class="alert alert-danger border-0 rounded-4 p-4 text-start">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-bug-fill me-2"></i> ERROR CRÍTICO</h5>
+                    <p class="small mb-4">${err.message}</p>
+                    <button class="btn btn-danger w-100 py-2 fw-bold" onclick="location.reload()">REINTENTAR CARGA</button>
+                </div>`;
         });
     };
 </script>

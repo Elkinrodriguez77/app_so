@@ -7,3 +7,4 @@ psycopg2-binary==2.9.9
 gunicorn==23.0.0
 python-dotenv==1.0.1
 xlrd==2.0.1
+pytz==2024.1
