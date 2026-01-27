@@ -1,37 +1,88 @@
 {% extends "layout.html" %}
 
-{% block title %}Cargar Ventas - SBD{% endblock %}
-
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 text-center">
-        <h2 class="mb-4">Carga de Reportes de Ventas</h2>
-        <div class="card p-4 shadow-sm border-0">
+<div class="row justify-content-center py-5">
+    <div class="col-xl-6 col-lg-8 text-center">
+        <!-- Logo Icon o Animación -->
+        <div class="mb-5 fade-in">
+            <i class="bi bi-gear-wide-connected text-warning" style="font-size: 5rem; filter: drop-shadow(0 0 20px rgba(255, 210, 0, 0.4));"></i>
+            <h1 class="display-4 fw-bold mt-3 letter-spacing-tight">SBD SELL-OUT</h1>
+            <p class="text-gray lead">Inteligencia de Datos y Reportes de Ventas Corporativas</p>
+        </div>
+
+        <div class="card p-5 shadow-lg border-0 bg-white fade-in" style="animation-delay: 0.2s;">
+            <h2 class="h4 fw-bold mb-4 text-dark">INICIAR CARGA ESTRATÉGICA</h2>
+            
             <form action="{{ url_for('process_upload') }}" method="post" enctype="multipart/form-data" id="uploadForm">
-                <div class="mb-3">
-                    <label for="excel_file" class="form-label">Seleccione el archivo (Excel o CSV)</label>
-                    <input class="form-control" type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls, .csv" required>
+                <div class="upload-zone p-5 mb-4 rounded-4 border-2 border-dashed border-light-subtle position-relative hover-lift transition-all" 
+                     style="background: #fdfdfd; cursor: pointer; border-color: #dee2e6 !important;"
+                     onclick="document.getElementById('excel_file').click()">
+                    
+                    <i class="bi bi-cloud-arrow-up-fill text-warning display-4 mb-3 d-block"></i>
+                    <h5 class="fw-bold text-dark mb-2">ARRASTRE O SELECCIONE SU ARCHIVO</h5>
+                    <p class="text-muted fw-medium small mb-0">Formatos soportados: Excel (.xlsx, .xls) o CSV</p>
+                    
+                    <input class="d-none" type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls, .csv" required 
+                           onchange="updateFileName(this)">
                 </div>
-                <div id="uploadProgressContainer" class="mb-3" style="display:none;">
-                    <label class="small text-muted">Subiendo archivo al servidor...</label>
-                    <div class="progress" style="height: 20px;">
-                        <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%; color: black; font-weight: bold;">0%</div>
+                
+                <div id="fileInfo" class="mb-4 d-none">
+                    <div class="p-3 rounded-3 bg-light border border-warning border-opacity-25 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-file-earmark-excel-fill text-success"></i>
+                        <span id="fileName" class="small fw-bold text-dark"></span>
                     </div>
                 </div>
-                <button type="submit" id="btnUpload" class="btn btn-primary w-100">Siguiente: Seleccionar Hoja / Configurar</button>
+
+                <div id="uploadProgressContainer" class="mb-4" style="display:none;">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="small text-dark fw-bold">Transmitiendo al Servidor...</span>
+                        <span id="percentText" class="small text-dark">0%</span>
+                    </div>
+                    <div class="progress bg-light" style="height: 12px; border-radius: 10px; border: 1px solid #eee;">
+                        <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated shadow-sm" 
+                             style="background: var(--accent-gradient); width: 0%;"></div>
+                    </div>
+                </div>
+
+                <button type="submit" id="btnUpload" class="btn btn-sbd w-100 py-3 mt-2">
+                    <i class="bi bi-rocket-takeoff-fill me-2"></i> INICIAR PROCESAMIENTO
+                </button>
             </form>
         </div>
-        <p class="text-muted mt-3"><small>Para archivos muy grandes, se recomienda usar formato <strong>CSV</strong>.</small></p>
+
+        <div class="mt-5 p-4 rounded-4 border-0 shadow-sm bg-white fade-in" style="animation-delay: 0.4s; border-left: 5px solid var(--sbd-yellow) !important;">
+            <div class="row align-items-center">
+                <div class="col-md-2 text-warning display-6"><i class="bi bi-lightning-charge-fill"></i></div>
+                <div class="col-md-10 text-start">
+                    <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">RECOMENDACIÓN TÉCNICA</h6>
+                    <p class="small mb-0 text-muted">Para archivos masivos (>10,000 filas), exporte su data a formato <strong>CSV (UTF-8)</strong> para una carga ultra-rápida y menor consumo de memoria.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+<style>
+    .hover-lift:hover { transform: translateY(-5px); border-color: var(--sbd-yellow) !important; background: rgba(255,210,0,0.05) !important; }
+    .transition-all { transition: all 0.3s ease; }
+    .backdrop-blur { backdrop-filter: blur(20px); }
+</style>
+
 <script>
+    function updateFileName(input) {
+        const info = document.getElementById('fileInfo');
+        const name = document.getElementById('fileName');
+        if (input.files.length > 0) {
+            info.classList.remove('d-none');
+            name.textContent = input.files[0].name;
+        }
+    }
+
     document.getElementById('uploadForm').onsubmit = function(e) {
         const btn = document.getElementById('btnUpload');
         const progressCont = document.getElementById('uploadProgressContainer');
         const progressBar = document.getElementById('uploadProgressBar');
+        const percentText = document.getElementById('percentText');
         
         btn.disabled = true;
         progressCont.style.display = 'block';
@@ -44,7 +95,7 @@
             if (e.lengthComputable) {
                 const percent = Math.round((e.loaded / e.total) * 100);
                 progressBar.style.width = percent + '%';
-                progressBar.innerHTML = percent + '%';
+                percentText.innerHTML = percent + '%';
             }
         };
 
@@ -54,7 +105,7 @@
                 document.write(xhr.responseText);
                 document.close();
             } else {
-                alert('Error en la carga');
+                alert('Error crítico en la transmisión. Verifique su conexión.');
                 btn.disabled = false;
                 progressCont.style.display = 'none';
             }

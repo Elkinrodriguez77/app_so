@@ -1,88 +1,138 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard - SBD{% endblock %}
+{% block title %}Dashboard Inteligente - SBD{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card p-3 shadow-sm border-0 mb-4">
-            <h5>Filtros</h5>
+<div class="row g-4">
+    <!-- Panel de Control Lateral -->
+    <div class="col-xl-3 col-lg-4">
+        <div class="card p-4 h-100 shadow-sm border-0 bg-white">
+            <div class="mb-4 text-center p-3 rounded-4 bg-light border border-secondary border-opacity-10">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">Tu último acceso</span>
+                <span class="text-dark fw-bold"><i class="bi bi-clock-history text-warning me-1"></i> {{ ultimo_acceso }}</span>
+            </div>
+
+            <h5 class="fw-bold mb-4 d-flex align-items-center text-dark">
+                <i class="bi bi-filter-circle me-2 text-warning"></i> CONTROL DE FILTROS
+            </h5>
             <form method="get">
-                <div class="mb-3">
-                    <label class="form-label small">Desde:</label>
-                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}">
+                <div class="mb-4">
+                    <label class="text-label d-block mb-3">RANGO DE FECHAS</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text bg-light border-secondary border-opacity-25 text-dark fw-bold" style="min-width: 45px; justify-content: center;">DE</span>
+                        <input type="date" name="fecha_inicio" class="form-control border-secondary border-opacity-50 text-dark fw-bold" value="{{ fecha_inicio }}" style="background-color: #ffffff !important;">
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-secondary border-opacity-25 text-dark fw-bold" style="min-width: 45px; justify-content: center;">A</span>
+                        <input type="date" name="fecha_fin" class="form-control border-secondary border-opacity-50 text-dark fw-bold" value="{{ fecha_fin }}" style="background-color: #ffffff !important;">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small">Hasta:</label>
-                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small">Agrupar por:</label>
-                    <select name="agrupar_por" class="form-select form-select-sm">
+
+                <div class="mb-4">
+                    <label class="text-label d-block mb-3">AGRUPACIÓN ESTRATÉGICA</label>
+                    <select name="agrupar_por" class="form-select form-select-sm border-secondary border-opacity-50 text-dark fw-bold" style="background-color: #ffffff !important;">
                         <option value="canal_venta" {% if agrupar_por == 'canal_venta' %}selected{% endif %}>Canal de Venta</option>
                         <option value="vendedor_distribuidor" {% if agrupar_por == 'vendedor_distribuidor' %}selected{% endif %}>Vendedor</option>
                         <option value="sku_sbd" {% if agrupar_por == 'sku_sbd' %}selected{% endif %}>SKU SBD</option>
                         <option value="codigo_cliente" {% if agrupar_por == 'codigo_cliente' %}selected{% endif %}>Código Cliente</option>
                         <option value="mes_anio" {% if agrupar_por == 'mes_anio' %}selected{% endif %}>Mes - Año</option>
-                        <option value="fecha" {% if agrupar_por == 'fecha' %}selected{% endif %}>Día</option>
                     </select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small">Código Cliente:</label>
-                    <input type="number" name="filtro_cliente" class="form-control form-control-sm" value="{{ filtro_cliente }}">
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm w-100">Consultar</button>
-            </form>
-        </div>
 
-        <div class="card p-3 shadow-sm border-danger border-0 mb-4">
-            <h5 class="text-danger">Zona de Peligro</h5>
-            <button class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">Eliminar por Periodo</button>
+                <div class="mb-4">
+                    <label class="text-label d-block mb-3">BÚSQUEDA POR CLIENTE (SAP)</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-secondary border-opacity-25 text-dark"><i class="bi bi-search"></i></span>
+                        <input type="number" name="filtro_cliente" class="form-control border-secondary border-opacity-50 text-dark fw-bold" placeholder="Código SAP..." value="{{ filtro_cliente }}" style="background-color: #ffffff !important;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-sbd w-100 py-3 shadow-sm">
+                    ACTUALIZAR ANÁLISIS
+                </button>
+            </form>
+
+            <div class="mt-5 p-3 rounded-4 border border-danger border-opacity-20 bg-danger bg-opacity-10 text-center">
+                <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-shield-lock-fill me-1"></i> SEGURIDAD DE DATOS</h6>
+                <button class="btn btn-outline-danger btn-sm w-100 text-uppercase fw-bold" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    Eliminar Período
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="col-md-8">
-        <div class="card p-3 shadow-sm border-0 mb-4">
-            <h5>Resumen de Ventas</h5>
-            <div class="table-responsive">
-                <table class="table table-sm table-striped">
-                    <thead class="table-dark">
+    <!-- Resultados Centrales -->
+    <div class="col-xl-9 col-lg-8">
+        <div class="row g-4 mb-4">
+            <!-- KPI Units -->
+            <div class="col-md-6">
+                <div class="card p-3 border-0 shadow-sm text-center bg-white border-bottom border-warning border-4 h-100">
+                    <div class="text-label mb-2" style="font-size: 0.8rem;">TOTAL UNIDADES VENDIDAS</div>
+                    <div class="fw-bold text-dark mb-0" style="font-size: 2.2rem; line-height: 1.2; letter-spacing: -1px;">{{ "{:,.0f}".format(gran_total_cant) }}</div>
+                    <div class="small text-muted mt-1" style="font-size: 0.75rem;">En el período seleccionado</div>
+                </div>
+            </div>
+            <!-- KPI Revenue -->
+            <div class="col-md-6">
+                <div class="card p-3 border-0 shadow-sm text-center bg-white border-bottom border-success border-4 h-100">
+                    <div class="text-label mb-2" style="font-size: 0.8rem;">TOTAL VENTA A COSTO (USD)</div>
+                    <div class="fw-bold text-success mb-0" style="font-size: 2.2rem; line-height: 1.2; letter-spacing: -1px;">${{ "{:,.2f}".format(gran_total_monto) }}</div>
+                    <div class="small text-muted mt-1" style="font-size: 0.75rem;">Consolidado neto</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 border-0 shadow-sm mb-4 bg-white">
+            <h5 class="fw-bold mb-4 text-dark text-uppercase letter-spacing-1">
+                <i class="bi bi-bar-chart-fill me-2 text-warning"></i> DESGLOSE POR {{ agrupar_por|replace('_', ' ')|upper }}
+            </h5>
+            <div class="table-responsive rounded-4 overflow-hidden border">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>Etiqueta</th>
-                            <th>Unidades</th>
-                            <th>Total Costo</th>
+                            <th class="ps-4">CATEGORÍA / ETIQUETA</th>
+                            <th class="text-center">UNIDADES</th>
+                            <th class="text-end pe-4">MONTO TOTAL</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in resumen %}
                         <tr>
-                            <td>{{ row.etiqueta }}</td>
-                            <td>{{ "{:,.0f}".format(row.total_cantidad) }}</td>
-                            <td>${{ "{:,.2f}".format(row.total_monto) }}</td>
+                            <td class="ps-4 fw-bold">{{ row.etiqueta }}</td>
+                            <td class="text-center fw-bold">{{ "{:,.0f}".format(row.total_cantidad) }}</td>
+                            <td class="text-end pe-4 fw-bold text-success">${{ "{:,.2f}".format(row.total_monto) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot class="table-dark">
-                        <tr>
-                            <th>GRAN TOTAL</th>
-                            <th>{{ "{:,.0f}".format(gran_total_cant) }}</th>
-                            <th>${{ "{:,.2f}".format(gran_total_monto) }}</th>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
 
-        <div class="card p-3 shadow-sm border-0 mb-4">
-            <h5>Últimos 10 Registros</h5>
-            <div class="table-responsive small">
-                <table class="table table-sm">
-                    <thead>
-                        <tr><th>Fecha</th><th>SKU</th><th>Cliente</th><th>Costo</th></tr>
+        <div class="card p-4 border-0 shadow-sm bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold text-dark text-uppercase mb-0">
+                    <i class="bi bi-clock-history me-2 text-warning"></i> AUDITORÍA: ÚLTIMOS 10 INGRESOS
+                </h5>
+                <span class="badge bg-light text-dark border border-warning px-3 py-2">TIEMPO REAL</span>
+            </div>
+            <div class="table-responsive small rounded-3 border">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">FECHA</th>
+                            <th>SKU SBD</th>
+                            <th>CLIENTE SAP</th>
+                            <th class="text-end pe-3">COSTO UNITARIO</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for r in recent %}
-                        <tr><td>{{ r.fecha }}</td><td>{{ r.sku_sbd }}</td><td>{{ r.codigo_cliente }}</td><td>${{ "{:,.2f}".format(r.total_venta_costo) }}</td></tr>
+                        <tr>
+                            <td class="ps-3">{{ r.fecha }}</td>
+                            <td><span class="badge bg-white text-dark border border-warning fw-bold">{{ r.sku_sbd }}</span></td>
+                            <td>{{ r.codigo_cliente }}</td>
+                            <td class="text-end pe-3 fw-bold text-dark">${{ "{:,.2f}".format(r.total_venta_costo) }}</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -91,26 +141,37 @@
     </div>
 </div>
 
-<!-- Modal para eliminar -->
+<!-- Modal de Eliminación -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-white border-danger shadow-lg rounded-4 overflow-hidden">
             <form action="{{ url_for('delete_records') }}" method="post">
-                <div class="modal-header bg-danger text-white"><h5>¿Eliminar registros?</h5></div>
-                <div class="modal-body">
-                    <p>Se borrarán los datos según los filtros actuales:</p>
-                    <ul>
-                        <li><b>Desde:</b> {{ fecha_inicio }}</li>
-                        <li><b>Hasta:</b> {{ fecha_fin }}</li>
-                        <li><b>Cliente:</b> {{ filtro_cliente if filtro_cliente else 'Todos' }}</li>
-                    </ul>
+                <div class="modal-header border-bottom border-danger bg-danger bg-opacity-10 py-3">
+                    <h5 class="modal-title text-danger fw-bold"><i class="bi bi-shield-slash-fill me-2"></i> ELIMINAR REGISTROS</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger border-0 rounded-4 p-4 mb-4" style="background-color: #fff5f5;">
+                        <h6 class="fw-bold mb-3 text-danger"><i class="bi bi-exclamation-octagon-fill me-2"></i> ATENCIÓN CRÍTICA</h6>
+                        <p class="small mb-0 text-dark">Se procederá a borrar definitivamente los registros que coincidan con los siguientes filtros actuales. <strong>Esta acción es irreversible.</strong></p>
+                    </div>
+                    <div class="p-3 bg-light rounded-4 border border-secondary border-opacity-10 mb-3 text-dark">
+                        <div class="d-flex justify-content-between mb-3 border-bottom border-dark border-opacity-10 pb-2">
+                            <span class="text-muted small fw-bold">PERÍODO SELECCIONADO:</span>
+                            <span class="fw-bold text-dark">{{ fecha_inicio }} <i class="bi bi-arrow-right mx-1 text-warning"></i> {{ fecha_fin }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-bold">CLIENTE SAP:</span>
+                            <span class="fw-bold text-dark">{{ filtro_cliente if filtro_cliente else 'TODOS LOS CLIENTES' }}</span>
+                        </div>
+                    </div>
                     <input type="hidden" name="del_inicio" value="{{ fecha_inicio }}">
                     <input type="hidden" name="del_fin" value="{{ fecha_fin }}">
                     <input type="hidden" name="del_cliente" value="{{ filtro_cliente }}">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger">Eliminar permanentemente</button>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light px-4 py-2 fw-bold text-muted" data-bs-dismiss="modal">CANCELAR</button>
+                    <button type="submit" class="btn btn-danger px-4 py-2 fw-bold shadow-sm">SÍ, BORRAR DEFINITIVAMENTE</button>
                 </div>
             </form>
         </div>

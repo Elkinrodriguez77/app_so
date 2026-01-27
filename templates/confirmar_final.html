@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card p-5 shadow-sm border-0 border-start border-success border-4">
+            <h2 class="text-success mb-4"><i class="bi bi-check-circle-fill"></i> ¡Todo Listo!</h2>
+            <p>Todos los datos han sido validados. Los canales están homologados y los SKUs existen en SAP.</p>
+            
+            <form id="finalForm">
+                <button type="submit" id="btnFinalImport" class="btn btn-success btn-lg w-100 shadow">Iniciar Carga en Base de Datos</button>
+            </form>
+            <div class="mt-3">
+                <a href="{{ url_for('index') }}" class="text-muted small">Cancelar y volver al inicio</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Carga Final -->
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-5">
+                <div id="loadingStatus">
+                    <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;"></div>
+                    <h5>Procesando Carga Final...</h5>
+                    <p class="text-muted small">Guardando registros en la base de datos de producción.</p>
+                </div>
+                <div id="finalResult" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('finalForm').onsubmit = function(e) {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        const loading = document.getElementById('loadingStatus');
+        const result = document.getElementById('finalResult');
+
+        document.getElementById('btnFinalImport').disabled = true;
+        modal.show();
+
+        fetch('{{ url_for("final_import") }}', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            if (data.status === 'success') {
+                result.innerHTML = `<h2 class="text-success">¡Carga Completada!</h2><p>Se importaron <b>${data.count}</b> registros sin errores.</p>
+                                  <div class="mt-4"><a href="{{ url_for('index') }}" class="btn btn-primary">Nueva Carga</a> 
+                                  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Ver Dashboard</a></div>`;
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            result.innerHTML = `<div class="alert alert-danger"><h5>Error en la Importación</h5><p>${err.message}</p>
+                               <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Reintentar</button></div>`;
+        });
+    };
+</script>
+{% endblock %}
