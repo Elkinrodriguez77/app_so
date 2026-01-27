@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Seleccionar Hoja</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card p-4 mx-auto" style="max-width: 500px;">
+            <h4 class="mb-4">El archivo tiene varias hojas</h4>
+            <p>Por favor seleccione la hoja que contiene los datos:</p>
+            <form action="{{ url_for('mapping') }}" method="get">
+                <input type="hidden" name="filepath" value="{{ filepath }}">
+                <div class="mb-3">
+                    <select name="sheet" class="form-select" required>
+                        {% for name in sheets %}
+                            <option value="{{ name }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" style="background-color: #fdb927; border: none; color: #000; font-weight: bold;">Continuar al Mapeo</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

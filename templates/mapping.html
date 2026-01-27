@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapeo de Columnas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5 mb-5">
+        <div class="card p-4 shadow">
+            <h3 class="mb-4">Relacionar Columnas</h3>
+            <p class="text-muted">Asocie las columnas de su archivo con los campos requeridos.</p>
+            
+            <form id="importForm">
+                <input type="hidden" name="filepath" value="{{ filepath }}">
+                <input type="hidden" name="sheet" value="{{ sheet }}">
+
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Campo del Sistema</th>
+                            <th>Columna del Archivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for db_key, data in required_columns.items() %}
+                            <tr>
+                                <td>
+                                    <strong>{{ data.label }}</strong>
+                                    {% if data.required %}<span class="text-danger">*</span>{% endif %}
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-1" 
+                                            data-bs-toggle="tooltip" title="{{ data.desc }}">
+                                        <i class="bi bi-info-circle-fill text-primary"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <select name="mapping[{{ db_key }}]" class="form-select" {% if data.required %}required{% endif %}>
+                                        <option value="">-- {% if data.required %}Obligatorio{% else %}Ignorar{% endif %} --</option>
+                                        {% for header in headers %}
+                                            <option value="{{ header }}">{{ header }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" id="btnImport" class="btn btn-success float-end">Iniciar Carga de Datos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Carga -->
+    <div class="modal fade" id="importModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-5">
+                    <div id="importLoading">
+                        <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;"></div>
+                        <h5>Procesando y Guardando Datos...</h5>
+                        <p class="text-muted small">Esto puede tardar unos minutos.<br><strong>No cierre esta ventana.</strong></p>
+                    </div>
+                    <div id="importResult" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el) });
+
+        document.getElementById('importForm').onsubmit = function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnImport');
+            const modal = new bootstrap.Modal(document.getElementById('importModal'));
+            const loading = document.getElementById('importLoading');
+            const result = document.getElementById('importResult');
+            const formData = new FormData(this);
+
+            btn.disabled = true;
+            modal.show();
+
+            fetch('{{ url_for("import_data") }}', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                if (data.status === 'success') {
+                    result.innerHTML = `<h2 class="text-success">¡Éxito!</h2><p>Se importaron <b>${data.count}</b> registros.</p>
+                                      <div class="mt-4"><a href="{{ url_for('index') }}" class="btn btn-primary">Cargar más</a> 
+                                      <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Ver Dashboard</a></div>`;
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(err => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.innerHTML = `<div class="alert alert-danger"><h5>Error</h5><p>${err.message}</p>
+                                   <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Reintentar</button></div>`;
+            });
+        };
+    </script>
+</body>
+</html>
