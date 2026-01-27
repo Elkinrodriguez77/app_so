@@ -7,15 +7,15 @@
             <h2 class="text-danger fw-bold mb-4 d-flex align-items-center">
                 <i class="bi bi-exclamation-octagon-fill me-3"></i> CÓDIGOS SKU NO ENCONTRADOS
             </h2>
-            <p class="text-muted mb-5">Detectamos productos en su archivo que <strong>no están registrados en la base maestra (SAP)</strong>. Por favor, asigne el código SAP correcto para cada uno antes de la carga final.</p>
+            <p class="text-muted mb-5">Detectamos productos en su archivo que <strong>no están registrados en la base maestra (SAP)</strong>. Por favor, busque y asigne el código SAP oficial para cada uno.</p>
             
             <form id="correccionForm">
                 <div class="table-responsive rounded-4 border mb-4 shadow-sm" style="max-height: 500px; overflow-y: auto;">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                        <thead class="table-light sticky-top">
                             <tr>
                                 <th class="ps-4 py-3 text-dark fw-bold">SKU DETECTADO (ARCHIVO)</th>
-                                <th class="pe-4 py-3 text-dark fw-bold">NUEVO CÓDIGO SAP VÁLIDO</th>
+                                <th class="pe-4 py-3 text-dark fw-bold">BUSCAR Y SELECCIONAR SKU SAP VÁLIDO</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white">
@@ -27,8 +27,17 @@
                                         <span class="badge bg-light text-danger border border-danger border-opacity-25 px-3 py-2 fw-bold font-monospace">{{ sku }}</span>
                                     </div>
                                 </td>
-                                <td class="pe-4">
-                                    <input type="text" name="{{ sku }}" class="form-control border-2 fw-bold" placeholder="Escriba el código SAP oficial..." required>
+                                <td class="pe-4 position-relative">
+                                    <div class="autocomplete-container">
+                                        <input type="text" 
+                                               class="form-control border-2 fw-bold sku-search-input" 
+                                               placeholder="Escriba código o nombre del producto..." 
+                                               data-original-sku="{{ sku }}"
+                                               autocomplete="off"
+                                               required>
+                                        <input type="hidden" name="{{ sku }}" class="sku-final-value">
+                                        <div class="autocomplete-results shadow-lg d-none"></div>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -49,6 +58,31 @@
     </div>
 </div>
 
+<style>
+    .autocomplete-container { position: relative; }
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+        font-size: 0.9rem;
+    }
+    .autocomplete-item:hover { background-color: #fff9e6; }
+    .autocomplete-item.active { background-color: var(--sbd-yellow); color: black; }
+    .sticky-top { z-index: 10; }
+</style>
+
 <!-- Modal de Carga Final Estilizado -->
 <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -68,8 +102,73 @@
 
 {% block scripts %}
 <script>
+    document.querySelectorAll('.sku-search-input').forEach(input => {
+        const resultsDiv = input.parentElement.querySelector('.autocomplete-results');
+        const hiddenInput = input.parentElement.querySelector('.sku-final-value');
+        let debounceTimer;
+
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                resultsDiv.classList.add('d-none');
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/api/buscar_sku?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        resultsDiv.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(item => {
+                                const div = document.createElement('div');
+                                div.className = 'autocomplete-item fw-bold';
+                                div.textContent = item.text;
+                                div.onclick = () => {
+                                    input.value = item.id;
+                                    hiddenInput.value = item.id;
+                                    resultsDiv.classList.add('d-none');
+                                    input.classList.add('is-valid');
+                                    input.classList.remove('is-invalid');
+                                };
+                                resultsDiv.appendChild(div);
+                            });
+                            resultsDiv.classList.remove('d-none');
+                        } else {
+                            resultsDiv.innerHTML = '<div class="autocomplete-item text-muted">No se encontraron resultados</div>';
+                            resultsDiv.classList.remove('d-none');
+                        }
+                    });
+            }, 300);
+        });
+
+        // Cerrar resultados al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.classList.add('d-none');
+            }
+        });
+    });
+
     document.getElementById('correccionForm').onsubmit = function(e) {
         e.preventDefault();
+        
+        // Verificar que todos los inputs ocultos tengan valor
+        let valid = true;
+        document.querySelectorAll('.sku-final-value').forEach(hidden => {
+            if (!hidden.value) {
+                hidden.parentElement.querySelector('.sku-search-input').classList.add('is-invalid');
+                valid = false;
+            }
+        });
+
+        if (!valid) {
+            alert('Por favor, seleccione un código SAP válido de la lista de sugerencias para cada SKU.');
+            return;
+        }
+
         const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
         const loading = document.getElementById('loadingStatus');
         const result = document.getElementById('finalResult');

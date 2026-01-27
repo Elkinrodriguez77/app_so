@@ -186,6 +186,21 @@ def step_validar_skus():
         flash(f"Error al validar SKUs: {str(e)}")
         return redirect(url_for('index'))
 
+@app.route('/api/buscar_sku')
+@login_required
+def buscar_sku():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2: return jsonify([])
+    try:
+        with engine.connect() as conn:
+            # Buscamos por Product ID o por la descripción si existe
+            # Usamos ILIKE para búsqueda insensible a mayúsculas
+            sql = text('SELECT DISTINCT "Product", "ProductDescription" FROM sap_byd_ventas WHERE "Product" ILIKE :q OR "ProductDescription" ILIKE :q LIMIT 10')
+            res = conn.execute(sql, {"q": f"%{q}%"}).mappings().all()
+            return jsonify([{"id": r['Product'], "text": f"{r['Product']} - {r['ProductDescription']}"} for r in res])
+    except Exception as e:
+        return jsonify([])
+
 @app.route('/final_import', methods=['POST'])
 @login_required
 def final_import():
@@ -193,12 +208,12 @@ def final_import():
     sku_corrections = request.form.to_dict(flat=True)
     
     try:
-        # VALIDACIÓN DE SKUs DE REEMPLAZO (Asegurar que los nuevos códigos sí existen en SAP)
+        # VALIDACIÓN DE SKUs DE REEMPLAZO
         if sku_corrections:
             nuevos_skus = [s.strip() for s in sku_corrections.values() if s.strip()]
             if nuevos_skus:
                 with engine.connect() as conn:
-                    # Buscamos cuáles de esos SKUs existen en la tabla maestra
+                    # Usamos una transacción limpia para la consulta
                     res = conn.execute(text('SELECT DISTINCT "Product" FROM sap_byd_ventas WHERE "Product" IN :skus'), {"skus": tuple(nuevos_skus)}).fetchall()
                     skus_validos = set(str(r[0]) for r in res)
                 
@@ -206,9 +221,10 @@ def final_import():
                 if invalidos:
                     return jsonify({
                         'status': 'error', 
-                        'message': f"ERROR DE VALIDACIÓN: Los siguientes códigos ingresados no existen en SAP: {', '.join(invalidos)}. Por favor verifique y use códigos válidos."
+                        'message': f"ERROR DE VALIDACIÓN: Los siguientes códigos no existen en SAP: {', '.join(invalidos)}."
                     }), 400
 
+        # Procesamiento del archivo
         df = read_csv_smart(data['filepath']) if data['sheet'] == 'csv' else pd.read_excel(data['filepath'], sheet_name=data['sheet'])
         final_m = {v: k for k, v in data['mapping'].items() if v}
         df = df[list(final_m.keys())].rename(columns=final_m)
@@ -222,16 +238,24 @@ def final_import():
 
         for col in ['cantidad_vendida', 'total_venta_costo', 'total_venta']:
             if col in df.columns: df[col] = df[col].apply(clean_money)
+        
         if 'fecha' in df.columns: 
-            # Para CSVs usamos dayfirst=True ya que en Colombia es DD/MM/YYYY
             df['fecha'] = pd.to_datetime(df['fecha'], dayfirst=True, errors='coerce').dt.date
-        if 'codigo_cliente' in df.columns: df['codigo_cliente'] = pd.to_numeric(df['codigo_cliente'], errors='coerce').fillna(0).astype(int)
+            
+        if 'codigo_cliente' in df.columns: 
+            df['codigo_cliente'] = pd.to_numeric(df['codigo_cliente'], errors='coerce').fillna(0).astype(int)
 
-        df.to_sql('ventas', engine, if_exists='append', index=False)
-        if os.path.exists(data['filepath']): os.remove(data['filepath'])
+        # Inserción con transacción robusta
+        with engine.begin() as conn:
+            df.to_sql('ventas', conn, if_exists='append', index=False)
+            
+        if os.path.exists(data['filepath']): 
+            os.remove(data['filepath'])
+            
         session.pop('temp_upload', None)
         return jsonify({'status': 'success', 'count': len(df)})
     except Exception as e:
+        # Forzamos una limpieza de la conexión si algo falla a nivel de pandas/sqlalchemy
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/dashboard')
