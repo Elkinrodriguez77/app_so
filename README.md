@@ -4,13 +4,12 @@ Aplicación profesional para la carga y gestión de reportes de ventas (Sell-Out
 
 ## Despliegue en Render
 
-1. **GitHub**: Sube este proyecto a un repositorio.
-2. **Web Service**: En Render, crea un nuevo Web Service conectado a ese repositorio.
+1. **Web Service**: En Render.
 3. **Entorno**: Python.
 4. **Build Command**: `pip install -r requirements.txt`
 5. **Start Command**: `gunicorn app:app`
 6. **Variables de Entorno**:
-   - `DATABASE_URL`: Tu URL de conexión a PostgreSQL (Render).
+   - `DATABASE_URL`: Conexión a PostgreSQL (Render).
 
 ## Características
 - **Procesamiento con Pandas**: Carga de archivos Excel/CSV ultra-rápida y exacta.
@@ -19,6 +18,6 @@ Aplicación profesional para la carga y gestión de reportes de ventas (Sell-Out
 - **Gestión de Datos**: Filtros avanzados y eliminación por períodos para evitar duplicados.
 
 ## Requisitos Locales
-- Python 3.9+
+- Python 3.11+
 - PostgreSQL
 - `pip install -r requirements.txt`
