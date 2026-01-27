@@ -64,6 +64,10 @@ def clean_money(value):
     try: return float(s)
     except: return 0.0
 
+# Helper para leer CSV con separador automático
+def read_csv_smart(path, **kwargs):
+    return pd.read_csv(path, sep=None, engine='python', encoding='utf-8-sig', **kwargs)
+
 # --- RUTAS ---
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -72,9 +76,7 @@ def login():
         u, p = request.form.get('username'), request.form.get('password')
         with engine.connect() as conn:
             user = conn.execute(text("SELECT * FROM usuarios WHERE username = :u"), {"u": u}).mappings().first()
-        
         if user and check_password_hash(user['password_hash'], p):
-            # Registrar último acceso
             with engine.begin() as conn:
                 conn.execute(text("UPDATE usuarios SET ultimo_acceso = :now WHERE id = :id"), 
                              {"now": datetime.now(), "id": user['id']})
@@ -129,10 +131,10 @@ def process_upload():
 def mapping():
     filepath, sheet = request.args.get('filepath'), request.args.get('sheet')
     try:
-        df = pd.read_csv(filepath, nrows=0) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, nrows=0)
+        df = read_csv_smart(filepath, nrows=0) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, nrows=0)
         return render_template('mapping.html', headers=df.columns.tolist(), filepath=filepath, sheet=sheet, required_columns=REQUIRED_COLUMNS)
     except Exception as e:
-        flash(f"Error: {str(e)}")
+        flash(f"Error al leer archivo: {str(e)}")
         return redirect(url_for('index'))
 
 @app.route('/step_homologar', methods=['POST'])
@@ -148,7 +150,7 @@ def step_homologar():
         return redirect(url_for('step_validar_skus'))
 
     try:
-        df = pd.read_csv(filepath, usecols=[canal_col]) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, usecols=[canal_col])
+        df = read_csv_smart(filepath, usecols=[canal_col]) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, usecols=[canal_col])
         valores_unicos = df[canal_col].dropna().unique().tolist()
         return render_template('homologar.html', valores_unicos=valores_unicos, canales_sbd=CANALES_SBD)
     except Exception as e:
@@ -166,7 +168,7 @@ def step_validar_skus():
     filepath, sheet = data['filepath'], data['sheet']
 
     try:
-        df = pd.read_csv(filepath, usecols=[sku_col]) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, usecols=[sku_col])
+        df = read_csv_smart(filepath, usecols=[sku_col]) if sheet == 'csv' else pd.read_excel(filepath, sheet_name=sheet, usecols=[sku_col])
         skus_archivo = set(df[sku_col].astype(str).unique())
 
         with engine.connect() as conn:
@@ -189,7 +191,7 @@ def final_import():
     sku_corrections = request.form.to_dict(flat=True)
     
     try:
-        df = pd.read_csv(data['filepath']) if data['sheet'] == 'csv' else pd.read_excel(data['filepath'], sheet_name=data['sheet'])
+        df = read_csv_smart(data['filepath']) if data['sheet'] == 'csv' else pd.read_excel(data['filepath'], sheet_name=data['sheet'])
         final_m = {v: k for k, v in data['mapping'].items() if v}
         df = df[list(final_m.keys())].rename(columns=final_m)
 
@@ -218,25 +220,17 @@ def dashboard():
     ff = request.args.get('fecha_fin', datetime.now().strftime('%Y-%m-%d'))
     ap = request.args.get('agrupar_por', 'canal_venta')
     fc = request.args.get('filtro_cliente', '')
-    
-    # Obtener último acceso
     with engine.connect() as conn:
-        u_info = conn.execute(text("SELECT ultimo_acceso FROM usuarios WHERE id = :id"), 
-                              {"id": session['user_id']}).mappings().first()
+        u_info = conn.execute(text("SELECT ultimo_acceso FROM usuarios WHERE id = :id"), {"id": session['user_id']}).mappings().first()
         ultimo_acceso = u_info['ultimo_acceso'].strftime('%d/%m/%Y %H:%M') if u_info and u_info['ultimo_acceso'] else "Primera vez"
-
     q_params = {'inicio': fi, 'fin': ff}
     where = "fecha BETWEEN :inicio AND :fin"
-    if fc:
-        where += " AND codigo_cliente = :cod"; q_params['cod'] = int(fc)
-    
+    if fc: where += " AND codigo_cliente = :cod"; q_params['cod'] = int(fc)
     gc = ap if ap != 'mes_anio' else "TO_CHAR(fecha, 'YYYY-MM')"
     sql = f"SELECT {gc} as etiqueta, SUM(cantidad_vendida) as total_cantidad, SUM(total_venta_costo) as total_monto FROM ventas WHERE {where} GROUP BY etiqueta ORDER BY etiqueta ASC"
-    
     with engine.connect() as conn:
         resumen = conn.execute(text(sql), q_params).mappings().all()
         recent = conn.execute(text("SELECT * FROM ventas ORDER BY id DESC LIMIT 10")).mappings().all()
-    
     return render_template('dashboard.html', resumen=resumen, recent=recent, fecha_inicio=fi, fecha_fin=ff, ap=ap, fc=fc, ultimo_acceso=ultimo_acceso, gran_total_cant=sum(r['total_cantidad'] for r in resumen), gran_total_monto=sum(r['total_monto'] for r in resumen))
 
 @app.route('/delete_records', methods=['POST'])
@@ -246,12 +240,10 @@ def delete_records():
     detalles = f"Período: {i} a {f} | Cliente: {c if c else 'TODOS'}"
     sql = "DELETE FROM ventas WHERE fecha BETWEEN :i AND :f"
     p = {'i': i, 'f': f}
-    if c:
-        sql += " AND codigo_cliente = :c"; p['c'] = int(c)
+    if c: sql += " AND codigo_cliente = :c"; p['c'] = int(c)
     with engine.begin() as conn:
         res = conn.execute(text(sql), p)
-        conn.execute(text("INSERT INTO auditoria_operaciones (username, accion, detalles) VALUES (:u, :a, :d)"),
-                     {"u": session['username'], "a": "ELIMINACIÓN DE REGISTROS", "d": detalles})
+        conn.execute(text("INSERT INTO auditoria_operaciones (username, accion, detalles) VALUES (:u, :a, :d)"), {"u": session['username'], "a": "ELIMINACIÓN", "d": detalles})
     flash(f"Eliminados {res.rowcount} registros. Operación auditada.")
     return redirect(url_for('dashboard'))
 

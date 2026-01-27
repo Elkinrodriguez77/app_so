@@ -11,7 +11,7 @@
         </div>
 
         <div class="card p-5 shadow-lg border-0 bg-white fade-in" style="animation-delay: 0.2s;">
-            <h2 class="h4 fw-bold mb-4 text-dark">INICIAR CARGA ESTRATÉGICA</h2>
+            <h2 class="h4 fw-bold mb-4 text-dark">INICIAR CARGA</h2>
             
             <form action="{{ url_for('process_upload') }}" method="post" enctype="multipart/form-data" id="uploadForm">
                 <div class="upload-zone p-5 mb-4 rounded-4 border-2 border-dashed border-light-subtle position-relative hover-lift transition-all" 
@@ -55,7 +55,7 @@
                 <div class="col-md-2 text-warning display-6"><i class="bi bi-lightning-charge-fill"></i></div>
                 <div class="col-md-10 text-start">
                     <h6 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">RECOMENDACIÓN TÉCNICA</h6>
-                    <p class="small mb-0 text-muted">Para archivos masivos (>10,000 filas), exporte su data a formato <strong>CSV (UTF-8)</strong> para una carga ultra-rápida y menor consumo de memoria.</p>
+                    <p class="small mb-0 text-muted">Para archivos masivos (>4,000 filas), exporte su data a formato <strong>CSV (UTF-8)</strong> para una carga ultra-rápida y menor consumo de memoria.</p>
                 </div>
             </div>
         </div>
