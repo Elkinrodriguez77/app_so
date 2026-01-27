@@ -20,3 +20,4 @@ database.sql
 database_pg.sql
 test_conexion.php
 crear_admin.py
+crear_maestro.py

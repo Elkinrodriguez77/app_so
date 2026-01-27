@@ -3,54 +3,62 @@
 {% block content %}
 <div class="row justify-content-center py-5">
     <div class="col-xl-10">
-        <div class="card p-5 shadow-lg border-0 bg-white border-start border-danger border-5">
-            <h2 class="text-danger fw-bold mb-4 d-flex align-items-center">
-                <i class="bi bi-exclamation-octagon-fill me-3"></i> CÓDIGOS SKU NO ENCONTRADOS
-            </h2>
-            <p class="text-muted mb-5">Detectamos productos en su archivo que <strong>no están registrados en la base maestra (SAP)</strong>. Por favor, busque y asigne el código SAP oficial para cada uno.</p>
+        <div class="card shadow-lg border-0 bg-white border-start border-danger border-5 overflow-hidden">
+            <div class="p-5 pb-4">
+                <h2 class="text-danger fw-bold mb-4 d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill me-3"></i> CÓDIGOS SKU NO ENCONTRADOS
+                </h2>
+                <p class="text-muted mb-0">Detectamos productos en su archivo que <strong>no están registrados en SAP</strong>. Busque el código oficial para cada uno.</p>
+            </div>
             
             <form id="correccionForm">
-                <div class="table-responsive rounded-4 border mb-4 shadow-sm" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th class="ps-4 py-3 text-dark fw-bold">SKU DETECTADO (ARCHIVO)</th>
-                                <th class="pe-4 py-3 text-dark fw-bold">BUSCAR Y SELECCIONAR SKU SAP VÁLIDO</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white">
-                            {% for sku in skus_invalidos %}
-                            <tr>
-                                <td class="ps-4">
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-x-circle-fill text-danger me-2"></i>
-                                        <span class="badge bg-light text-danger border border-danger border-opacity-25 px-3 py-2 fw-bold font-monospace">{{ sku }}</span>
-                                    </div>
-                                </td>
-                                <td class="pe-4 position-relative">
-                                    <div class="autocomplete-container">
-                                        <input type="text" 
-                                               class="form-control border-2 fw-bold sku-search-input" 
-                                               placeholder="Escriba código o nombre del producto..." 
-                                               data-original-sku="{{ sku }}"
-                                               autocomplete="off"
-                                               required>
-                                        <input type="hidden" name="{{ sku }}" class="sku-final-value">
-                                        <div class="autocomplete-results shadow-lg d-none"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <!-- Contenedor con scroll controlado para no romper la interfaz -->
+                <div class="px-5">
+                    <div class="table-container rounded-4 border shadow-sm mb-4">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4 py-3 text-dark fw-bold" style="width: 40%;">SKU EN ARCHIVO</th>
+                                    <th class="pe-4 py-3 text-dark fw-bold" style="width: 60%;">CÓDIGO SAP VÁLIDO</th>
+                                </tr>
+                            </thead>
+                        </table>
+                        <div class="table-body-scroll" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <tbody class="bg-white">
+                                    {% for sku in skus_invalidos %}
+                                    <tr>
+                                        <td class="ps-4" style="width: 40%;">
+                                            <span class="badge bg-light text-danger border border-danger border-opacity-25 px-3 py-2 fw-bold font-monospace small">{{ sku }}</span>
+                                        </td>
+                                        <td class="pe-4" style="width: 60%;">
+                                            <div class="autocomplete-container">
+                                                <div class="position-relative">
+                                                    <input type="text" 
+                                                           class="form-control border-2 fw-bold sku-search-input" 
+                                                           placeholder="Buscar código SAP..." 
+                                                           autocomplete="off"
+                                                           required>
+                                                    <div class="spinner-border spinner-border-sm text-warning search-spinner d-none" role="status"></div>
+                                                </div>
+                                                <input type="hidden" name="{{ sku }}" class="sku-final-value">
+                                                <div class="autocomplete-results shadow-lg d-none"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-5">
+                <div class="p-5 pt-0 d-flex justify-content-between align-items-center mt-3">
                     <a href="{{ url_for('index') }}" class="btn btn-light px-4 py-2 fw-bold text-muted border">
-                        <i class="bi bi-arrow-left me-2"></i> CANCELAR OPERACIÓN
+                        <i class="bi bi-arrow-left me-2"></i> CANCELAR
                     </a>
                     <button type="submit" id="btnFinal" class="btn btn-sbd px-5 py-3">
-                        <i class="bi bi-shield-check-fill me-2"></i> VALIDAR Y CARGAR DEFINITIVAMENTE
+                        <i class="bi bi-shield-check-fill me-2"></i> FINALIZAR CARGA
                     </button>
                 </div>
             </form>
@@ -59,39 +67,56 @@
 </div>
 
 <style>
-    .autocomplete-container { position: relative; }
+    .table-container { background: white; position: relative; }
+    /* Eliminamos el recorte visual de los resultados */
+    .table-body-scroll { position: relative; }
+    
+    .autocomplete-container { position: relative; width: 100%; }
+    
     .autocomplete-results {
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
         background: white;
-        border: 1px solid #dee2e6;
+        border: 2px solid var(--sbd-yellow);
         border-radius: 8px;
-        z-index: 1000;
+        z-index: 1050; /* Por encima de todo */
         max-height: 200px;
         overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
     }
+    
     .autocomplete-item {
         padding: 10px 15px;
         cursor: pointer;
-        border-bottom: 1px solid #f8f9fa;
+        border-bottom: 1px solid #eee;
+        font-weight: 700;
         font-size: 0.9rem;
     }
-    .autocomplete-item:hover { background-color: #fff9e6; }
-    .autocomplete-item.active { background-color: var(--sbd-yellow); color: black; }
-    .sticky-top { z-index: 10; }
+    
+    .autocomplete-item:hover { background: #fff9e6; }
+    
+    .search-spinner {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        z-index: 10;
+    }
+
+    .is-valid-sku { border-color: #198754 !important; background-color: #f8fff9 !important; }
+    .is-invalid-sku { border-color: #dc3545 !important; }
 </style>
 
-<!-- Modal de Carga Final Estilizado -->
+<!-- Modal de Carga Final -->
 <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-white border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-content bg-white border-0 shadow-lg rounded-4">
             <div class="modal-body text-center p-5">
                 <div id="loadingStatus">
-                    <div class="spinner-border text-warning mb-4" style="width: 3.5rem; height: 3.5rem; border-width: 0.25em;" role="status"></div>
-                    <h4 class="fw-bold text-dark">INICIANDO IMPORTACIÓN</h4>
-                    <p class="text-muted mb-0 small">Sincronizando registros corregidos con el servidor central.</p>
+                    <div class="spinner-border text-warning mb-4" style="width: 3.5rem; height: 3.5rem;" role="status"></div>
+                    <h4 class="fw-bold text-dark">IMPORTANDO DATOS</h4>
+                    <p class="text-muted mb-0">Guardando registros en la base de datos...</p>
                 </div>
                 <div id="finalResult" style="display:none;"></div>
             </div>
@@ -103,71 +128,101 @@
 {% block scripts %}
 <script>
     document.querySelectorAll('.sku-search-input').forEach(input => {
-        const resultsDiv = input.parentElement.querySelector('.autocomplete-results');
-        const hiddenInput = input.parentElement.querySelector('.sku-final-value');
+        const container = input.closest('.autocomplete-container');
+        const resultsDiv = container.querySelector('.autocomplete-results');
+        const hiddenInput = container.querySelector('.sku-final-value');
+        const spinner = container.querySelector('.search-spinner');
         let debounceTimer;
 
         input.addEventListener('input', function() {
             clearTimeout(debounceTimer);
             const query = this.value.trim();
+            hiddenInput.value = ''; 
+            input.classList.remove('is-valid-sku', 'is-invalid-sku');
             
             if (query.length < 2) {
                 resultsDiv.classList.add('d-none');
                 return;
             }
 
+            spinner.classList.remove('d-none');
+            
             debounceTimer = setTimeout(() => {
                 fetch(`/api/buscar_sku?q=${encodeURIComponent(query)}`)
                     .then(res => res.json())
                     .then(data => {
+                        spinner.classList.add('d-none');
                         resultsDiv.innerHTML = '';
+                        
                         if (data.length > 0) {
+                            // Si hay un match exacto (ej. al pegar), validamos de una vez
+                            const exactMatch = data.find(item => item.id.toLowerCase() === query.toLowerCase());
+                            if (exactMatch) {
+                                input.value = exactMatch.id;
+                                hiddenInput.value = exactMatch.id;
+                                input.classList.add('is-valid-sku');
+                                resultsDiv.classList.add('d-none');
+                                return;
+                            }
+
                             data.forEach(item => {
                                 const div = document.createElement('div');
-                                div.className = 'autocomplete-item fw-bold';
+                                div.className = 'autocomplete-item';
                                 div.textContent = item.text;
                                 div.onclick = () => {
                                     input.value = item.id;
                                     hiddenInput.value = item.id;
                                     resultsDiv.classList.add('d-none');
-                                    input.classList.add('is-valid');
-                                    input.classList.remove('is-invalid');
+                                    input.classList.add('is-valid-sku');
                                 };
                                 resultsDiv.appendChild(div);
                             });
                             resultsDiv.classList.remove('d-none');
                         } else {
-                            resultsDiv.innerHTML = '<div class="autocomplete-item text-muted">No se encontraron resultados</div>';
+                            resultsDiv.innerHTML = '<div class="autocomplete-item text-muted small">No encontrado en SAP</div>';
                             resultsDiv.classList.remove('d-none');
                         }
-                    });
+                    })
+                    .catch(() => spinner.classList.add('d-none'));
             }, 300);
         });
 
-        // Cerrar resultados al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
-                resultsDiv.classList.add('d-none');
+        // Al perder el foco, si no se seleccionó pero el texto coincide exactamente con uno válido
+        input.addEventListener('blur', function() {
+            const val = this.value.trim();
+            if (val && !hiddenInput.value) {
+                spinner.classList.remove('d-none');
+                fetch(`/api/buscar_sku?q=${encodeURIComponent(val)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        spinner.classList.add('d-none');
+                        const exactMatch = data.find(item => item.id.toLowerCase() === val.toLowerCase());
+                        if (exactMatch) {
+                            input.value = exactMatch.id;
+                            hiddenInput.value = exactMatch.id;
+                            input.classList.add('is-valid-sku');
+                        } else {
+                            input.classList.add('is-invalid-sku');
+                        }
+                    });
             }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!container.contains(e.target)) resultsDiv.classList.add('d-none');
         });
     });
 
     document.getElementById('correccionForm').onsubmit = function(e) {
         e.preventDefault();
-        
-        // Verificar que todos los inputs ocultos tengan valor
-        let valid = true;
+        let allValid = true;
         document.querySelectorAll('.sku-final-value').forEach(hidden => {
             if (!hidden.value) {
-                hidden.parentElement.querySelector('.sku-search-input').classList.add('is-invalid');
-                valid = false;
+                hidden.parentElement.querySelector('.sku-search-input').classList.add('is-invalid-sku');
+                allValid = false;
             }
         });
-
-        if (!valid) {
-            alert('Por favor, seleccione un código SAP válido de la lista de sugerencias para cada SKU.');
-            return;
-        }
+        if (!allValid) { alert('Seleccione códigos válidos de la lista.'); return; }
 
         const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
         const loading = document.getElementById('loadingStatus');
@@ -185,30 +240,20 @@
             if (data.status === 'success') {
                 result.innerHTML = `
                     <div class="text-center">
-                        <div class="mb-4">
-                            <i class="bi bi-check-circle-fill text-success" style="font-size: 4.5rem;"></i>
-                        </div>
-                        <h2 class="fw-bold text-dark mt-3">¡CARGA EXITOSA!</h2>
-                        <p class="text-muted">Se han inyectado satisfactoriamente <b>${data.count}</b> registros corregidos en el sistema.</p>
-                        <hr class="my-4 opacity-10">
-                        <div class="d-grid gap-3">
+                        <i class="bi bi-patch-check-fill text-success mb-4" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold text-dark">¡LISTO!</h2>
+                        <p class="text-muted">Se cargaron <b>${data.count}</b> registros.</p>
+                        <div class="d-grid gap-2 mt-4">
                             <a href="{{ url_for('index') }}" class="btn btn-sbd py-3">NUEVA CARGA</a>
-                            <a href="{{ url_for('dashboard') }}" class="btn btn-light py-2 fw-bold text-muted border">VER DASHBOARD</a>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-light py-2 border">VER DASHBOARD</a>
                         </div>
                     </div>`;
-            } else {
-                throw new Error(data.message);
-            }
+            } else { throw new Error(data.message); }
         })
         .catch(err => {
             loading.style.display = 'none';
             result.style.display = 'block';
-            result.innerHTML = `
-                <div class="alert alert-danger border-0 rounded-4 p-4 text-start">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-bug-fill me-2"></i> ERROR EN EL PROCESAMIENTO</h5>
-                    <p class="small mb-4">${err.message}</p>
-                    <button class="btn btn-danger w-100 py-2 fw-bold" onclick="location.reload()">REINTENTAR VALIDACIÓN</button>
-                </div>`;
+            result.innerHTML = `<div class="alert alert-danger border-0 rounded-4 text-start"><h5 class="fw-bold">ERROR</h5><p class="small">${err.message}</p><button class="btn btn-danger w-100" onclick="location.reload()">REINTENTAR</button></div>`;
         });
     };
 </script>

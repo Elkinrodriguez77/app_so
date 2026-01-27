@@ -190,14 +190,13 @@ def step_validar_skus():
 @login_required
 def buscar_sku():
     q = request.args.get('q', '').strip()
-    if len(q) < 2: return jsonify([])
+    if not q or len(q) < 2: return jsonify([])
     try:
         with engine.connect() as conn:
-            # Buscamos por Product ID o por la descripción si existe
-            # Usamos ILIKE para búsqueda insensible a mayúsculas
-            sql = text('SELECT DISTINCT "Product", "ProductDescription" FROM sap_byd_ventas WHERE "Product" ILIKE :q OR "ProductDescription" ILIKE :q LIMIT 10')
-            res = conn.execute(sql, {"q": f"%{q}%"}).mappings().all()
-            return jsonify([{"id": r['Product'], "text": f"{r['Product']} - {r['ProductDescription']}"} for r in res])
+            # BÚSQUEDA INSTANTÁNEA en la tabla maestra
+            sql = text('SELECT sku FROM productos_maestros WHERE sku ILIKE :q LIMIT 15')
+            res = conn.execute(sql, {"q": f"{q}%"}).mappings().all()
+            return jsonify([{"id": str(r['sku']), "text": str(r['sku'])} for r in res])
     except Exception as e:
         return jsonify([])
 
@@ -213,8 +212,8 @@ def final_import():
             nuevos_skus = [s.strip() for s in sku_corrections.values() if s.strip()]
             if nuevos_skus:
                 with engine.connect() as conn:
-                    # Usamos una transacción limpia para la consulta
-                    res = conn.execute(text('SELECT DISTINCT "Product" FROM sap_byd_ventas WHERE "Product" IN :skus'), {"skus": tuple(nuevos_skus)}).fetchall()
+                    # Usamos la tabla maestra para validación ultra rápida
+                    res = conn.execute(text('SELECT sku FROM productos_maestros WHERE sku IN :skus'), {"skus": tuple(nuevos_skus)}).fetchall()
                     skus_validos = set(str(r[0]) for r in res)
                 
                 invalidos = [s for s in nuevos_skus if s not in skus_validos]
